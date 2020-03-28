@@ -1,0 +1,64 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: AWS CloudFormation script to spin up Launch cofiguration Template and AutoScalingGroup
+Parameters:
+  ImageId: 
+    Description: "The ID of the AMI."
+    Type: "String"
+    Default: "ami-ab49f8d"
+  SubnetOne: 
+    Description: "Subnet ID One in a virtual private cloud (VPC)."
+    Type: "String"
+    Default: "subnet-5ea0c127"
+  SubnetTwo: 
+    Description: "Subnet IDs Two in a virtual private cloud (VPC)."
+    Type: "String"
+    Default: "subnet-6194ea3b"
+  SecurityGroupOne: 
+    Description: "Security group names. For a nondefault VPC, you must use security group IDs instead."
+    Type: "String"
+    Default: "sg-903004f8"
+  SecurityGroupTwo: 
+    Description: "Security group names. For a nondefault VPC, you must use security group IDs instead."
+    Type: "String"
+    Default: "sg-7c227019"
+
+Resources:
+  DOPLaunchConfiguration:
+    Type: AWS::EC2::LaunchTemplate
+    Properties: 
+      # Fn::Sub is an intrinsic function used to customize the name of the launch template to include the stack name.
+      LaunchTemplateName: !Sub ${AWS::StackName}-launch-configuration-template
+      LaunchTemplateData: 
+        BlockDeviceMappings: 
+          - Ebs:
+              VolumeSize: 8
+            DeviceName: /dev/sdf
+        CreditSpecification: 
+          CpuCredits: Unlimited
+        # Referencing a parameter value (!Ref ImageId)
+        ImageId: !Ref ImageId
+        InstanceType: t2.micro
+        KeyName: dop-launch-configuration
+        Monitoring: 
+          Enabled: true
+        SecurityGroupIds: 
+          - !Ref SecurityGroupOne
+          - !Ref SecurityGroupTwo
+
+  DOPAutoScalingGroup:
+    Type: AWS::AutoScaling::AutoScalingGroup
+    Properties:
+      AutoScalingGroupName: DOP Auto Scaling Group
+      MinSize: "1"
+      MaxSize: "4"
+      DesiredCapacity: "2"
+      # Each instance has 300 seconds to warm up before receiving its first health check.
+      HealthCheckGracePeriod: 300
+      LaunchTemplate:
+        LaunchTemplateId: !Ref DOPLaunchConfiguration
+        Version: !GetAtt DOPLaunchConfiguration.LatestVersionNumber
+      # The VPCZoneIdentifier property specifies the subnets where the instances will be created.
+      VPCZoneIdentifier:
+        - !Ref SubnetOne
+        - !Ref SubnetTwo
+
