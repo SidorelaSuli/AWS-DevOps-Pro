@@ -51,6 +51,8 @@ Resources:
   DOPAutoScalingGroup:
     Type: AWS::AutoScaling::AutoScalingGroup
     Properties:
+      AvailabilityZones: 
+        Fn::GetAZs: ""
       AutoScalingGroupName: DOP Auto Scaling Group
       MinSize: "1"
       MaxSize: "4"
