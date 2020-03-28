@@ -1,0 +1,57 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: AWS CloudFormation template
+
+Parameters:
+  Parameter1: 
+    Description: "Description of parameter one"
+    Type: "String"
+    Default: "default value of this parameter"
+    MinLength: 1
+    MaxLength: 255
+    AllowedPattern: "^[a-zA-Z][-a-zA-Z0-9]*$"
+  Parameter2: 
+    Description: "Description of parameter two"
+    Type: "String"
+    Default: "default value of this parameter"
+    MinLength: 1
+    MaxLength: 255
+    AllowedPattern: "^[a-zA-Z][-a-zA-Z0-9]*$"
+
+Metadata:
+  # Examples
+  Instances:
+    Description: "Information about the instances"
+  Databases: 
+    Description: "Information about the databases"
+  EC2InstanceTypes:
+    Description: "Information about the EC2 Instance Types"
+    
+Resources: 
+  PrivateLoadBalancerSGExample:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: !Join ['-', ['load-balancer', 'sg']]
+      GroupDescription: Access to the Private facing load balancer
+      VpcId: 
+        Fn::ImportValue: !Sub "VPCID"
+      SecurityGroupIngress:
+          - CidrIp: your ip
+            IpProtocol: "tcp"
+            FromPort: 443
+            ToPort: 443
+          - CidrIp: 
+              Fn::ImportValue: !Sub "VPCCIDR"
+            IpProtocol: "tcp"
+            FromPort: 443
+            ToPort: 443
+      Tags:
+        -
+          Key: 'Name'
+          Value: !Join ['-', ['load-balancer', 'sg']]
+
+Outputs:
+  PrivateLoadBalancerSGExample:
+    Description: The url of the load balancer security group
+    Value: !Join ['', [!GetAtt 'PrivateLoadBalancerSGExample.GroupName']]
+    Export:
+      Name: !Join [ ':', [ !Ref 'AWS::StackName', 'PrivateLoadBalancerSGExample' ] ]
