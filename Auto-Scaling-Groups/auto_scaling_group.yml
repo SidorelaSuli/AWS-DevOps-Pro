@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: "2010-09-09"
-Description: AWS CloudFormation script to spin up Launch cofiguration Template and AutoScalingGroup
+Description: AWS CloudFormation script to spin up Launch configuration Template and AutoScalingGroup
 Parameters:
   ImageId: 
     Description: "The ID of the AMI."
