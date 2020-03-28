@@ -23,6 +23,7 @@ Parameters:
     Default: "sg-7c227019"
 
 Resources:
+  # A launch template contains the parameters to launch an EC2 instance.
   DOPLaunchConfiguration:
     Type: AWS::EC2::LaunchTemplate
     Properties: 
@@ -45,6 +46,8 @@ Resources:
           - !Ref SecurityGroupOne
           - !Ref SecurityGroupTwo
 
+  # An Auto Scaling group contains a collection of Amazon EC2 instances that are treated as a logical grouping 
+  # for the purposes of automatic scaling and management.
   DOPAutoScalingGroup:
     Type: AWS::AutoScaling::AutoScalingGroup
     Properties:
@@ -61,4 +64,3 @@ Resources:
       VPCZoneIdentifier:
         - !Ref SubnetOne
         - !Ref SubnetTwo
-
