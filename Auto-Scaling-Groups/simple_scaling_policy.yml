@@ -72,7 +72,8 @@ Resources:
   # For example: If the current capacity of the group is 2 and the adjustment is 1, 
   # then when this policy is performed, we add 1 capacity units to the capacity for a total of 3 capacity units.
   
-  ASGSimpleScalingPolicy: 
+  # Scale OUT Policy
+  ASGSimpleScalingPolicyOUT: 
     Type: AWS::AutoScaling::ScalingPolicy
     Properties: 
       AdjustmentType: "ChangeInCapacity"
@@ -82,7 +83,17 @@ Resources:
         Ref: "DOPAutoScalingGroup"
       ScalingAdjustment: 1
 
-
+  # Scale IN Policy
+  ASGSimpleScalingPolicyIN: 
+    Type: AWS::AutoScaling::ScalingPolicy
+    Properties: 
+      AdjustmentType: "ChangeInCapacity"
+      PolicyType: "SimpleScaling"
+      Cooldown: "300"
+      AutoScalingGroupName: 
+        Ref: "DOPAutoScalingGroup"
+      ScalingAdjustment: -1
+      
   # Explanation of ExactCapacity and PercentChangeInCapacity Adjustment Types for Simple Scaling Policies
 
   # ExactCapacity — Change the current capacity of the group to the specified value. 
