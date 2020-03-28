@@ -65,11 +65,13 @@ Resources:
 
   # You can specify the adjustment type as a percentage of the current capacity 
   # of your Auto Scaling group, or in capacity units. There are 3 AdjustmentType: ChangeInCapacity, ExactCapacity, PercentChangeInCapacity 
-
+  # These Adjustment Types are only valid if the Scaling policy is Simple or Step Scaling Policy
+  
   # In this Simple Scaling Policy I have used ChangeInCapacity Adjustment Type.
   # Increment or decrement the current capacity of the group by the specified value.
   # For example: If the current capacity of the group is 2 and the adjustment is 1, 
   # then when this policy is performed, we add 1 capacity units to the capacity for a total of 3 capacity units.
+  
   ASGSimpleScalingPolicy: 
     Type: AWS::AutoScaling::ScalingPolicy
     Properties: 
@@ -79,3 +81,16 @@ Resources:
       AutoScalingGroupName: 
         Ref: "DOPAutoScalingGroup"
       ScalingAdjustment: 1
+
+
+  # Explanation of ExactCapacity and PercentChangeInCapacity Adjustment Types for Simple Scaling Policies
+
+  # ExactCapacity — Change the current capacity of the group to the specified value. 
+  # Specify a positive value with this adjustment type. 
+  # For example: If the current capacity of the group is 2 and the adjustment is 4, then when this policy is performed, 
+  # we change the capacity to 4 capacity units.
+
+  # PercentChangeInCapacity — Increment or decrement the current capacity of the group by the specified percentage. 
+  # A positive value increases the capacity and a negative value decreases the capacity. 
+  # For example: If the current capacity is 10 and the adjustment is 10 percent, then when this policy is performed, 
+  # we add 1 capacity unit to the capacity for a total of 11 capacity units.
