@@ -1,0 +1,85 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: AWS CloudFormation script to spin up Launch configuration Template, AutoScalingGroup and Simple ASG Scaling Policy
+Parameters:
+  ImageId: 
+    Description: "The ID of the AMI."
+    Type: "String"
+    Default: "ami-ab49f8d"
+  SubnetOne: 
+    Description: "Subnet ID One in a virtual private cloud (VPC)."
+    Type: "String"
+    Default: "subnet-5ea0c127"
+  SubnetTwo: 
+    Description: "Subnet IDs Two in a virtual private cloud (VPC)."
+    Type: "String"
+    Default: "subnet-6194ea3b"
+  SecurityGroupOne: 
+    Description: "Security group names. For a nondefault VPC, you must use security group IDs instead."
+    Type: "String"
+    Default: "sg-903004f8"
+  SecurityGroupTwo: 
+    Description: "Security group names. For a nondefault VPC, you must use security group IDs instead."
+    Type: "String"
+    Default: "sg-7c227019"
+
+Resources:
+  DOPLaunchConfiguration:
+    Type: AWS::EC2::LaunchTemplate
+    Properties: 
+      LaunchTemplateName: !Sub ${AWS::StackName}-launch-configuration-template
+      LaunchTemplateData: 
+        BlockDeviceMappings: 
+          - Ebs:
+              VolumeSize: 8
+            DeviceName: /dev/sdf
+        CreditSpecification: 
+          CpuCredits: Unlimited
+        ImageId: !Ref ImageId
+        InstanceType: t2.micro
+        KeyName: dop-launch-configuration
+        Monitoring: 
+          Enabled: true
+        SecurityGroupIds: 
+          - !Ref SecurityGroupOne
+          - !Ref SecurityGroupTwo
+
+  DOPAutoScalingGroup:
+    Type: AWS::AutoScaling::AutoScalingGroup
+    Properties:
+      AvailabilityZones: 
+        Fn::GetAZs: ""
+      AutoScalingGroupName: DOP Auto Scaling Group
+      MinSize: "1"
+      MaxSize: "4"
+      DesiredCapacity: "2"
+      HealthCheckGracePeriod: 300
+      LaunchTemplate:
+        LaunchTemplateId: !Ref DOPLaunchConfiguration
+        Version: !GetAtt DOPLaunchConfiguration.LatestVersionNumber
+      VPCZoneIdentifier:
+        - !Ref SubnetOne
+        - !Ref SubnetTwo
+
+  # The following example creates a scaling policy with the StepScaling policy type and the ChangeInCapacity adjustment type.
+  # Increase capacity by 1 when the value of the metric is greater than or equal to 70 percent but less than 85 percent
+  # Increase capacity by 2 when the value of the metric is greater than or equal to 85 percent but less than 95 percent
+  # Increase capacity by 3 when the value of the metric is greater than or equal to 95 percent
+  
+  ASGStepScalingPolicy: 
+    Type: AWS::AutoScaling::ScalingPolicy
+    Properties: 
+      AdjustmentType: "ChangeInCapacity"
+      AutoScalingGroupName: 
+        Ref: "DOPAutoScalingGroup"
+      PolicyType: "StepScaling"
+      MetricAggregationType: "Average"
+      EstimatedInstanceWarmup: 60
+      StepAdjustments: 
+        - MetricIntervalLowerBound: 70
+          MetricIntervalUpperBound: 85
+          ScalingAdjustment: 1
+        - MetricIntervalLowerBound: 85
+          MetricIntervalUpperBound: 95
+          ScalingAdjustment: 2
+        - MetricIntervalLowerBound: 95
+          ScalingAdjustment: 3
