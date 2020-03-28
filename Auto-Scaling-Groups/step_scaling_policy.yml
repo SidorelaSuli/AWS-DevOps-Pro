@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: "2010-09-09"
-Description: AWS CloudFormation script to spin up Launch configuration Template, AutoScalingGroup and Simple ASG Scaling Policy
+Description: AWS CloudFormation script to spin up Launch configuration Template, AutoScalingGroup and Step ASG Scaling Policy
 Parameters:
   ImageId: 
     Description: "The ID of the AMI."
@@ -64,7 +64,7 @@ Resources:
   # Increase capacity by 1 when the value of the metric is greater than or equal to 70 percent but less than 85 percent
   # Increase capacity by 2 when the value of the metric is greater than or equal to 85 percent but less than 95 percent
   # Increase capacity by 3 when the value of the metric is greater than or equal to 95 percent
-  
+
   ASGStepScalingPolicy: 
     Type: AWS::AutoScaling::ScalingPolicy
     Properties: 
