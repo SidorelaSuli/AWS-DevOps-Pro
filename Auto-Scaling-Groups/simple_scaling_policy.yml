@@ -98,7 +98,7 @@ Resources:
       Cooldown: "300"
       AutoScalingGroupName: 
         Ref: "DOPAutoScalingGroup"
-      ScalingAdjustment: 1
+      ScalingAdjustment: 4
 
   # PercentChangeInCapacity — Increment or decrement the current capacity of the group by the specified percentage. 
   # A positive value increases the capacity and a negative value decreases the capacity. 
