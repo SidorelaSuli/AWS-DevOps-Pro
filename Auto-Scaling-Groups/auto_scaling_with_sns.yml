@@ -218,7 +218,6 @@ Resources:
       Endpoint: !Ref Email
       Protocol: email
       TopicArn: !Ref SNSTopic   
-
 Outputs:
   URL:
     Description: The URL of the website
