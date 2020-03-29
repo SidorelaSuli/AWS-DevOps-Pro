@@ -1,0 +1,250 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: AWS CloudFormation script to spin up AutoScalingGroup and CloudWatch Alarms, and sending notifications to sns.
+Parameters:
+  SubnetOne: 
+    Description: "Subnet ID One in a virtual private cloud (VPC)."
+    Type: String
+    Default: ''
+  SubnetTwo: 
+    Description: "Subnet IDs Two in a virtual private cloud (VPC)."
+    Type: String
+    Default: ''
+  SecurityGroupOne: 
+    Description: "Security group names. For a nondefault VPC, you must use security group IDs instead."
+    Type: String
+    Default: ''
+  SecurityGroupTwo: 
+    Description: "Security group names. For a nondefault VPC, you must use security group IDs instead."
+    Type: String
+    Default: ''
+  KeyName:
+    Description: 'Optional key pair of the ec2-user to establish a SSH connection to the EC2 instance.'
+    Type: String
+    Default: ''
+  Email:
+    Description: 'The Email where you will get the SNS Notifications for High/Low EC2 CPUUtilization'
+    Type: String
+    Default: ''
+  InstanceType:
+    Description: WebServer EC2 instance type
+    Type: String
+    Default: t2.small
+    AllowedValues: [t1.micro, t2.nano, t2.micro, t2.small, t2.medium, t2.large, m1.small,
+      m1.medium, m1.large, m1.xlarge, m2.xlarge, m2.2xlarge, m2.4xlarge, m3.medium,
+      m3.large, m3.xlarge, m3.2xlarge, m4.large, m4.xlarge, m4.2xlarge, m4.4xlarge,
+      m4.10xlarge, c1.medium, c1.xlarge, c3.large, c3.xlarge, c3.2xlarge, c3.4xlarge,
+      c3.8xlarge, c4.large, c4.xlarge, c4.2xlarge, c4.4xlarge, c4.8xlarge, g2.2xlarge,
+      g2.8xlarge, r3.large, r3.xlarge, r3.2xlarge, r3.4xlarge, r3.8xlarge, i2.xlarge,
+      i2.2xlarge, i2.4xlarge, i2.8xlarge, d2.xlarge, d2.2xlarge, d2.4xlarge, d2.8xlarge,
+      hi1.4xlarge, hs1.8xlarge, cr1.8xlarge, cc2.8xlarge, cg1.4xlarge]
+    ConstraintDescription: must be a valid EC2 instance type.
+
+Conditions:
+  HasKeyName: !Not [!Equals [!Ref KeyName, '']]
+
+Mappings:
+  RegionMap:
+    'eu-north-1':
+      AMI: 'ami-074a0e4318181e9d9'
+    'ap-south-1':
+      AMI: 'ami-0d9462a653c34dab7'
+    'eu-west-3':
+      AMI: 'ami-0fd9bce3a3384b635'
+    'eu-west-2':
+      AMI: 'ami-0389b2a3c4948b1a0'
+    'eu-west-1':
+      AMI: 'ami-099a8245f5daa82bf'
+    'ap-northeast-2':
+      AMI: 'ami-0a93a08544874b3b7'
+    'me-south-1':
+      AMI: 'ami-0e0e68bcf15b6f5cd'
+    'ap-northeast-1':
+      AMI: 'ami-0af1df87db7b650f4'
+    'sa-east-1':
+      AMI: 'ami-080a223be3de0c3b8'
+    'ca-central-1':
+      AMI: 'ami-00db12b46ef5ebc36'
+    'ap-east-1':
+      AMI: 'ami-47e4a036'
+    'ap-southeast-1':
+      AMI: 'ami-0f02b24005e4aec36'
+    'ap-southeast-2':
+      AMI: 'ami-0f767afb799f45102'
+    'eu-central-1':
+      AMI: 'ami-0df0e7600ad0913a9'
+    'us-east-1':
+      AMI: 'ami-0a887e401f7654935'
+    'us-east-2':
+      AMI: 'ami-0e38b48473ea57778'
+    'us-west-1':
+      AMI: 'ami-01c94064639c71719'
+    'us-west-2':
+      AMI: 'ami-0e8c04af2729ff1bb'
+
+Resources:
+  ElasticLoadBalancer:
+    Type: AWS::ElasticLoadBalancing::LoadBalancer
+    Properties:
+      AvailabilityZones: !GetAZs ''
+      Listeners:
+      - LoadBalancerPort: '80'
+        InstancePort: '80'
+        Protocol: HTTP
+      HealthCheck:
+        Target: HTTP:80/
+        HealthyThreshold: '3'
+        UnhealthyThreshold: '5'
+        Interval: '30'
+        Timeout: '5'
+
+  InstanceSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Enable SSH access and HTTP from the load balancer only
+      SecurityGroupIngress:
+      - IpProtocol: tcp
+        FromPort: 22
+        ToPort: 22
+        CidrIp: 0.0.0.0/0
+      - IpProtocol: tcp
+        FromPort: 80
+        ToPort: 80
+        CidrIp: 0.0.0.0/0
+
+  LaunchConfiguration:
+    Type: AWS::EC2::LaunchTemplate
+    Properties: 
+      LaunchTemplateName: !Sub ${AWS::StackName}-launch-configuration-template
+      LaunchTemplateData: 
+        BlockDeviceMappings: 
+          - Ebs:
+              VolumeSize: 8
+            DeviceName: /dev/sdf
+        CreditSpecification: 
+          CpuCredits: Unlimited
+        ImageId: !FindInMap [RegionMap, !Ref 'AWS::Region', AMI]
+        InstanceType: !Ref 'InstanceType'
+        KeyName: !If [HasKeyName, !Ref KeyName, !Ref 'AWS::NoValue']
+        Monitoring: 
+          Enabled: true
+        SecurityGroupIds: 
+          - !Ref SecurityGroupOne
+          - !Ref SecurityGroupTwo
+
+  AutoScalingGroup:
+    Type: AWS::AutoScaling::AutoScalingGroup
+    CreationPolicy:
+      ResourceSignal:
+        Timeout: PT15M
+        Count: '2'
+    UpdatePolicy:
+      AutoScalingRollingUpdate:
+        MaxBatchSize: '1'
+        MinInstancesInService: '1'
+        PauseTime: PT15M
+        WaitOnResourceSignals: 'true'
+    Properties:
+      AutoScalingGroupName: DOP Auto Scaling Group
+      MinSize: 1
+      MaxSize: 4
+      DesiredCapacity: 2
+      HealthCheckGracePeriod: 300
+      LaunchTemplate:
+        LaunchTemplateId: !Ref LaunchConfiguration
+        Version: !GetAtt LaunchConfiguration.LatestVersionNumber
+      VPCZoneIdentifier:
+        - !Ref SubnetOne
+        - !Ref SubnetTwo
+      LoadBalancerNames: [!Ref 'ElasticLoadBalancer']
+      NotificationConfigurations:
+        - TopicARN: !Ref SNSTopic
+          NotificationTypes: ['autoscaling:EC2_INSTANCE_LAUNCH', 'autoscaling:EC2_INSTANCE_LAUNCH_ERROR',
+            'autoscaling:EC2_INSTANCE_TERMINATE', 'autoscaling:EC2_INSTANCE_TERMINATE_ERROR']
+
+  ScheduledActionUp:
+    Type: AWS::AutoScaling::ScheduledAction
+    Properties:
+      AutoScalingGroupName: !Ref 'AutoScalingGroup'
+      MaxSize: '5'
+      MinSize: '2'
+      Recurrence: 0 8 * * *
+      
+  ScheduledActionDown:
+    Type: AWS::AutoScaling::ScheduledAction
+    Properties:
+      AutoScalingGroupName: !Ref 'AutoScalingGroup'
+      MaxSize: '1'
+      MinSize: '1'
+      Recurrence: 0 17 * * *
+
+  # Scale OUT Policy
+  SimpleScalingPolicyOUT: 
+    Type: AWS::AutoScaling::ScalingPolicy
+    Properties: 
+      AdjustmentType: "ChangeInCapacity"
+      PolicyType: "SimpleScaling"
+      Cooldown: 300
+      AutoScalingGroupName: 
+        Ref: "AutoScalingGroup"
+      ScalingAdjustment: 1
+
+  # Scale IN Policy
+  SimpleScalingPolicyIN: 
+    Type: AWS::AutoScaling::ScalingPolicy
+    Properties: 
+      AdjustmentType: "ChangeInCapacity"
+      PolicyType: "SimpleScaling"
+      Cooldown: 300
+      AutoScalingGroupName: 
+        Ref: AutoScalingGroup
+      ScalingAdjustment: -1
+
+  CPUTooHighAlarm:
+    Type: 'AWS::CloudWatch::Alarm'
+    Properties:
+      AlarmDescription: Scale-up if CPU is greater than 80% for 10 minutes
+      Namespace: AWS/EC2
+      MetricName: CPUUtilization
+      Statistic: Average
+      Period: 600
+      EvaluationPeriods: 1
+      ComparisonOperator: GreaterThanThreshold
+      Threshold: 80
+      AlarmActions:
+        - !Ref SimpleScalingPolicyOUT
+      Dimensions:
+      - Name: AutoScalingGroupName
+        Value: !Ref 'AutoScalingGroup'
+
+  CPUAlarmLow:
+    Type: 'AWS::CloudWatch::Alarm'
+    Properties:
+      AlarmDescription: Scale-down if CPU is less than 60% for 10 minutes
+      MetricName: CPUUtilization
+      Namespace: AWS/EC2
+      Statistic: Average
+      Period: 300
+      EvaluationPeriods: 2
+      Threshold: 60
+      AlarmActions:
+        - !Ref SimpleScalingPolicyIN
+      ComparisonOperator: LessThanThreshold
+      Dimensions:
+      - Name: AutoScalingGroupName
+        Value: !Ref 'AutoScalingGroup'
+
+  SNSTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: auto-scaling-cpu-utilization
+  
+  Subscription:
+    Type: AWS::SNS::Subscription
+    Properties:
+      Endpoint: !Ref Email
+      Protocol: email
+      TopicArn: !Ref SNSTopic   
+Outputs:
+  URL:
+    Description: The URL of the website
+    Value: !Join ['', ['http://', !GetAtt [ElasticLoadBalancer, DNSName]]]
